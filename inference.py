@@ -23,7 +23,7 @@ class Inference(object):
         self.vgg19_model = keras.applications.VGG19(include_top=False,input_shape=(256,256,3))
         self.perceptual_model = self.perc_model(self.vgg19_model)
     
-    def get_celeba_items(path):
+    def get_celeba_items(self,path):
         c_items = os.listdir(path)
         c_items.sort()
         items=[]
@@ -32,7 +32,7 @@ class Inference(object):
             items.append([it, item])
         return items
 
-    def intersection(lst1, lst2):
+    def intersection(self,lst1, lst2):
       lst3 = []
       for i, j in lst1:
         for k, h in lst2:
@@ -40,7 +40,7 @@ class Inference(object):
             lst3.append([i,j, h])  
       return lst3
 
-    def intersection_2(lst1,lst2):
+    def intersection_2(self,lst1,lst2):
       lst3 = []
       for i, j , h in lst1:
         for m, n in lst2:
@@ -76,17 +76,17 @@ class Inference(object):
         return perceptual_loss
     
     def infer_pairs(self):
-        trian_female = get_celeba_items('/content/celeba_hq/train/female')
-        train_male = get_celeba_items('/content/celeba_hq/train/male')
-        train_mask = get_celeba_items( '/content/celeba_hq/train/train_mask')
-        trian_eyes = get_celeba_items('/content/drive/MyDrive/eye_croped')
+        trian_female = self.get_celeba_items('/content/celeba_hq/train/female')
+        train_male = self.get_celeba_items('/content/celeba_hq/train/male')
+        train_mask = self.get_celeba_items( '/content/celeba_hq/train/train_mask')
+        trian_eyes = self.get_celeba_items('/content/drive/MyDrive/eye_croped')
 
         train_celeba = trian_female + train_male
-        celeba_list =  intersection(train_celeba, train_mask)
+        celeba_list =  self.intersection(train_celeba, train_mask)
 
-        final_celeba_list =  intersection_2(celeba_list, trian_eyes)
+        final_celeba_list =  self.intersection_2(celeba_list, trian_eyes)
 
-        for i in rnage(len(final_celeba_list)):
+        for i in range(len(final_celeba_list)):
             id_path = final_celeba_list
             mask_path = final_celeba_list
             eye_path = final_celeba_list
