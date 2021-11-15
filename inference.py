@@ -22,6 +22,31 @@ class Inference(object):
         self.pixel_loss_func = tf.keras.losses.MeanAbsoluteError(tf.keras.losses.Reduction.SUM)
         self.vgg19_model = keras.applications.VGG19(include_top=False,input_shape=(256,256,3))
         self.perceptual_model = self.perc_model(self.vgg19_model)
+    
+    def get_celeba_items(path):
+        c_items = os.listdir(path)
+        c_items.sort()
+        items=[]
+        for it in c_items:
+            item = (os.path.join(path, it))
+            items.append([it, item])
+        return items
+
+    def intersection(lst1, lst2):
+      lst3 = []
+      for i, j in lst1:
+        for k, h in lst2:
+          if i[:-4]==k[:-4]:
+            lst3.append([i,j, h])  
+      return lst3
+
+    def intersection_2(lst1,lst2):
+      lst3 = []
+      for i, j , h in lst1:
+        for m, n in lst2:
+          if i[:-4]==m[:-4]:
+            lst3.append([j,h,n])  
+      return lst3
 
     def perc_model (self,vgg_model):
         output1 = vgg_model.layers[1].output
@@ -51,28 +76,38 @@ class Inference(object):
         return perceptual_loss
     
     def infer_pairs(self):
-        names = [f for f in self.args.id_dir.iterdir() if f.suffix[1:] in self.args.img_suffixes]
-        for img_name in tqdm(names):
-            id_path = utils.find_file_by_str(self.args.id_dir, img_name.stem)
-            mask_path = utils.find_file_by_str(self.args.mask_dir, img_name.stem)
-            attr_path = utils.find_file_by_str(self.args.attr_dir, img_name.stem)
-            if len(id_path) != 1 or len(attr_path) != 1:
-                print(f'Could not find a single pair with name: {img_name.stem}')
-                continue
+        trian_female = get_celeba_items('/content/celeba_hq/train/female')
+        train_male = get_celeba_items('/content/celeba_hq/train/male')
+        train_mask = get_celeba_items( '/content/celeba_hq/train/train_mask')
+        trian_eyes = get_celeba_items('/content/drive/MyDrive/eye_croped')
 
-            id_img = utils.read_image(id_path[0], self.args.resolution)
-            mask_img , attr_img = utils.read_mask_image(id_path[0], mask_path[0], self.args.resolution)
+        train_celeba = trian_female + train_male
+        celeba_list =  intersection(train_celeba, train_mask)
 
+        final_celeba_list =  intersection_2(celeba_list, trian_eyes)
 
-            out_img = self.G(mask_img, attr_img, id_img)[0]
-			
-            pred_id_embedding = self.G.id_encoder(out_img)
-            gt_id_embedding = self.G.id_encoder(id_img)
-            id_loss = tf.reduce_mean(tf.keras.losses.MAE(gt_id_embedding, pred_id_embedding))
-            lnd_loss = tf.constant(0)  
-            L1_loss  = self.pixel_loss_func(id_img, out_img)
-            
-            utils.save_image(out_img, self.args.output_dir.joinpath(f'{img_name.name}'))
+        for i in rnage(len(final_celeba_list)):
+            id_path = final_celeba_list
+            mask_path = final_celeba_list
+            eye_path = final_celeba_list
+            attr_path = final_celeba_list
+
+            id_img = utils.read_image(id_path, self.args.resolution)
+            gt_img = id_img
+            mask_img , attr_img = utils.read_mask_image(id_path, mask_path, self.args.resolution)
+            eye_img = utils.read_eye_image(eye_path, self.args.resolution)
+
+            attr_img = eye_img
+            id_embedding = self.model.G.id_encoder(eye_img)       
+            attr_embedding = self.model.G.attr_encoder(mask_img)
+
+            z_tag = tf.concat([id_embedding, attr_embedding], -1)
+            w = self.model.G.latent_spaces_mapping(z_tag)
+            pred = self.model.G.stylegan_s(w) 
+            pred = (pred + 1)  / 2 
+
+            utils.save_image(pred, self.args.output_dir.joinpath(f'{img_name.name[:-4]}'+'_init.png'))
+            utils.save_image(id_img, self.args.output_dir.joinpath(f'{img_name.name[:-4]}'+'_gt.png'))
 
     def landmark_detection(self,face_alignment_model, img):
         preds = face_alignment_model.get_landmarks(img)
