@@ -87,17 +87,17 @@ class Inference(object):
         final_celeba_list =  self.intersection_2(celeba_list, trian_eyes)
 
         for i in range(len(final_celeba_list)):
-            id_path = final_celeba_list
-            mask_path = final_celeba_list
-            eye_path = final_celeba_list
-            attr_path = final_celeba_list
+            id_path = final_celeba_list[i][0]
+            mask_path = final_celeba_list[i][1]
+            eye_path = final_celeba_list[i][2]
+            attr_path = final_celeba_list[i][0]
 
             id_img = utils.read_image(id_path, self.args.resolution)
             gt_img = id_img
             mask_img , attr_img = utils.read_mask_image(id_path, mask_path, self.args.resolution)
             eye_img = utils.read_eye_image(eye_path, self.args.resolution)
 
-            attr_img = eye_img
+            
             id_embedding = self.model.G.id_encoder(eye_img)       
             attr_embedding = self.model.G.attr_encoder(mask_img)
 
@@ -106,8 +106,8 @@ class Inference(object):
             pred = self.model.G.stylegan_s(w) 
             pred = (pred + 1)  / 2 
 
-            utils.save_image(pred, self.args.output_dir.joinpath(f'{img_name.name[:-4]}'+'_init.png'))
-            utils.save_image(id_img, self.args.output_dir.joinpath(f'{img_name.name[:-4]}'+'_gt.png'))
+            utils.save_image(pred, self.args.output_dir.joinpath(f'/pred/{img_name.name[:-4]}'+'_init.png'))
+            utils.save_image(id_img, self.args.output_dir.joinpath(f'/gt/{img_name.name[:-4]}'+'_gt.png'))
 
     def landmark_detection(self,face_alignment_model, img):
         preds = face_alignment_model.get_landmarks(img)
