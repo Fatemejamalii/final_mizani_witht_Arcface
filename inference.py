@@ -153,13 +153,13 @@ class Inference(object):
             loss =  tf.keras.losses.MeanAbsoluteError(tf.keras.losses.Reduction.SUM)
             perceptual_loss =lambda y_gt, y_pred: 0.01 * self.perc_style_loss(y_gt,y_pred,self.perceptual_model)
 			
-            mask = Image.open(mask_path[0])
+            mask = Image.open(mask_path)
             mask = mask.convert('RGB')
             mask = mask.resize((256,256))
             mask = np.asarray(mask).astype(float)/255.0
             mask1 = np.asarray(mask).astype(float) 
                               
-            img = cv2.imread(str(id_path[0]))
+            img = cv2.imread(str(id_path))
             img = cv2.resize(img,(256,256))
             img = cv2.cvtColor(img, cv2.COLOR_BGR2RGB) 
 
@@ -185,7 +185,7 @@ class Inference(object):
 
             utils.save_image(pred, self.args.output_dir.joinpath(f'/init/{img_name.name[:-4]}'+'.png'))
             utils.save_image(id_img, self.args.output_dir.joinpath(f'/gt/{img_name.name[:-4]}'+'.png'))
-            utils.save_image(id_img, self.args.output_dir.joinpath(f'/final/{img_name.name[:-4]}'+'.png'))
+            utils.save_image(opt_pred, self.args.output_dir.joinpath(f'/final/{img_name.name[:-4]}'+'.png'))
 
 
     def opt_infer_pairs(self):
