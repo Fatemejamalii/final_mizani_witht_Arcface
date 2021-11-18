@@ -176,7 +176,7 @@ class TestArgs(BaseArgs):
 
         self.parser.add_argument('--img_suffixes', type=list, default=['png', 'jpg', 'jpeg'])
 
-        self.parser.add_argument('--test_func', type=str, choices=['infer_on_dirs', 'infer_pairs', 'interpolate', 'opt_infer_pairs'])
+        self.parser.add_argument('--test_func', type=str, choices=['infer_on_dirs', 'infer_pairs', 'infer_pairs_1', 'interpolate', 'opt_infer_pairs'])
 
         self.parser.add_argument('--input', type=str)
 
