@@ -23,6 +23,10 @@ class Inference(object):
         self.vgg19_model = keras.applications.VGG19(include_top=False,input_shape=(256,256,3))
         self.perceptual_model = self.perc_model(self.vgg19_model)
     
+    def landmark_detection(self,face_alignment_model, img):
+          preds = face_alignment_model.get_landmarks(img)
+          return preds
+		
     def get_celeba_items(self,path):
         c_items = os.listdir(path)
         c_items.sort()
@@ -74,7 +78,7 @@ class Inference(object):
         # perceptual_loss /= 5 
         
         return perceptual_loss
-    
+ 
     def infer_pairs(self):
         trian_female = self.get_celeba_items('/content/celeba_hq/train/female')
         train_male = self.get_celeba_items('/content/celeba_hq/train/male')
@@ -109,9 +113,81 @@ class Inference(object):
             utils.save_image(pred, self.args.output_dir.joinpath(f'/pred/{img_name.name[:-4]}'+'_init.png'))
             utils.save_image(id_img, self.args.output_dir.joinpath(f'/gt/{img_name.name[:-4]}'+'_gt.png'))
 
-    def landmark_detection(self,face_alignment_model, img):
-        preds = face_alignment_model.get_landmarks(img)
-        return preds
+
+			
+    def infer_pairs_1(self):
+        trian_female = self.get_celeba_items('/content/celeba_hq/train/female')
+        train_male = self.get_celeba_items('/content/celeba_hq/train/male')
+        train_mask = self.get_celeba_items( '/content/celeba_hq/train/train_mask')
+        trian_eyes = self.get_celeba_items('/content/drive/MyDrive/eye_croped')
+
+        train_celeba = trian_female + train_male
+        celeba_list =  self.intersection(train_celeba, train_mask)
+
+        final_celeba_list =  self.intersection_2(celeba_list, trian_eyes)
+
+        for i in range(len(final_celeba_list)):
+            print(i)
+            id_path = final_celeba_list[i][0]
+            mask_path = final_celeba_list[i][1]
+            eye_path = final_celeba_list[i][2]
+            attr_path = final_celeba_list[i][0]
+
+            id_img = utils.read_image(id_path, self.args.resolution)
+            gt_img = id_img
+            mask_img , attr_img = utils.read_mask_image(id_path, mask_path, self.args.resolution)
+            eye_img = utils.read_eye_image(eye_path, self.args.resolution)
+
+            
+            id_embedding = self.model.G.id_encoder(eye_img)       
+            attr_embedding = self.model.G.attr_encoder(mask_img)
+
+            z_tag = tf.concat([id_embedding, attr_embedding], -1)
+            w = self.model.G.latent_spaces_mapping(z_tag)
+            pred = self.model.G.stylegan_s(w) 
+            pred = (pred + 1)  / 2 
+			
+			
+			          
+            optimizer = tf.keras.optimizers.Adam(learning_rate=0.01, beta_1 =0.9, beta_2=0.999, epsilon=1e-8 ,name='Adam')
+            loss =  tf.keras.losses.MeanAbsoluteError(tf.keras.losses.Reduction.SUM)
+            perceptual_loss =lambda y_gt, y_pred: 0.01 * self.perc_style_loss(y_gt,y_pred,self.perceptual_model)
+			
+            mask = Image.open(mask_path[0])
+            mask = mask.convert('RGB')
+            mask = mask.resize((256,256))
+            mask = np.asarray(mask).astype(float)/255.0
+            mask1 = np.asarray(mask).astype(float) 
+                              
+            img = cv2.imread(str(id_path[0]))
+            img = cv2.resize(img,(256,256))
+            img = cv2.cvtColor(img, cv2.COLOR_BGR2RGB) 
+
+            loss_value = 0
+            wp = tf.Variable(w ,trainable=True)
+			
+            for i in range(200):
+                with tf.GradientTape() as tape:
+                    out_img = self.model.G.stylegan_s(wp) 
+                    out_img = (out_img + 1)  / 2 
+                    mask_out_img = out_img * mask1
+
+                    loss_value_1 = loss(mask_img ,mask_out_img)
+                    loss_value_3 = perceptual_loss(eye_img ,eye_out_image)
+                    loss_value = 1e-5*loss_value_3 +  1e-5*loss_value_1
+                    
+                grads = tape.gradient(loss_value, [wp])
+                optimizer.apply_gradients(zip(grads, [wp]))
+                      
+                  
+            opt_pred = self.G.stylegan_s(wp)
+            opt_pred = (opt_pred + 1) / 2
+
+            utils.save_image(pred, self.args.output_dir.joinpath(f'/init/{img_name.name[:-4]}'+'.png'))
+            utils.save_image(id_img, self.args.output_dir.joinpath(f'/gt/{img_name.name[:-4]}'+'.png'))
+            utils.save_image(id_img, self.args.output_dir.joinpath(f'/final/{img_name.name[:-4]}'+'.png'))
+
+
     def opt_infer_pairs(self):
         names = [f for f in self.args.id_dir.iterdir() if f.suffix[1:] in self.args.img_suffixes]
         for img_name in tqdm(names):
