@@ -168,18 +168,18 @@ class Inference(object):
 			
             loss_value = 0
             wp = tf.Variable(w ,trainable=True)
-            for i in range(100):
+            for i in range(200):
                 with tf.GradientTape() as tape:
                     out_img = self.model.G.stylegan_s(wp) 
                     out_img = (out_img + 1)  / 2 
                     mask_out_img = out_img * mask1
                     eye_out_image = tf.image.crop_and_resize(out_img, tf.Variable([[(x_1/255) , (y_1/255), (x_2/255), (y_2/255) ]]), tf.Variable([0]), (256,256))
-                    if i%10==0 and i !=0:
+                    if i%25==0 and i !=0:
                         utils.save_image(out_img, self.args.output_dir.joinpath(f'{img_name.name[:-4]}'+'_{0}.png'.format(i)))
                     loss_value_1 = loss(mask_img ,mask_out_img)
                     # loss_value_2 = arcface_loss(self.model.G.id_encoder(eye_img) , self.model.G.id_encoder(eye_out_image))
                     loss_value_3 = perceptual_loss(eye_img ,eye_out_image)
-                    loss_value = loss_value_3 
+                    loss_value = 1e-5*loss_value_3 +  1e-5*loss_value_1
                     
                 grads = tape.gradient(loss_value, [wp])
                 optimizer.apply_gradients(zip(grads, [wp]))
