@@ -12,6 +12,10 @@ from matplotlib.image import imread
 import cv2
 import face_alignment
 from tensorflow import keras
+from imutils import face_utils
+import imutils
+import dlib
+
 
 
 class Inference(object):
@@ -116,13 +120,16 @@ class Inference(object):
 
 			
     def infer_pairs_1(self):
-        ID = self.get_celeba_items('/content/drive/MyDrive/mizani/FFHQ_ID')
-        mask = self.get_celeba_items('/content/drive/MyDrive/mizani/FFHQ_sample_mask')
-        eyes = self.get_celeba_items('/content/drive/MyDrive/mizani/FFHQ_eye')
+        ID = self.get_celeba_items('/content/drive/MyDrive/mizani/FFHQ/ID')
+        mask = self.get_celeba_items('/content/drive/MyDrive/mizani/FFHQ/mask')
+        eyes = self.get_celeba_items('/content/drive/MyDrive/mizani/FFHQ/eye')
 
         my_dataset =  self.intersection(ID, mask)
         final_list =  self.intersection_2(my_dataset, eyes)
-	
+
+        detector = dlib.get_frontal_face_detector()
+        predictor = dlib.shape_predictor('/content/drive/MyDrive/pi_project_2/eval_darasets/shape_predictor_68_face_landmarks.dat')
+        
         for k in tqdm(range(len(final_list))):
             id_path = final_list[k][0]
             img_name = id_path.split('/')[-1]
@@ -130,8 +137,8 @@ class Inference(object):
             eye_path = final_list[k][2]
             attr_path = final_list[k][0]
             os.path.exists
-            if os.path.exists('/content/drive/MyDrive/mizani/FFHQ_Pi_result' + str(img_name[:-4])+'_final.png'):	
-              print(k)
+            if os.path.exists('/content/drive/MyDrive/mizani/FFHQ/result' + str(img_name[:-4])+'_final.png'):	
+              pass
             else:
               try:
                 id_img = utils.read_image(id_path, self.args.resolution)
@@ -154,29 +161,30 @@ class Inference(object):
                 loss =  tf.keras.losses.MeanAbsoluteError(tf.keras.losses.Reduction.SUM)
                 perceptual_loss =lambda y_gt, y_pred: 0.01 * self.perc_style_loss(y_gt,y_pred,self.perceptual_model)
                 
-                mask = Image.open(mask_path)
-                mask = mask.convert('RGB')
-                mask = mask.resize((256,256))
-                mask = np.asarray(mask).astype(float)/255.0
-                mask1 = np.asarray(mask).astype(float) 
+                # mask = Image.open(mask_path)
+                # mask = mask.convert('RGB')
+                # mask = mask.resize((256,256))
+                # mask = np.asarray(mask).astype(float)/255.0
+                # mask1 = np.asarray(mask).astype(float) 
                                   
                 img = cv2.imread(str(id_path))
-                img = cv2.resize(img,(256,256))
-                img = cv2.cvtColor(img, cv2.COLOR_BGR2RGB) 
-                
-                face_alignment_model = face_alignment.FaceAlignment(face_alignment.LandmarksType._2D, flip_input=False)
-                landmarks = self.landmark_detection(face_alignment_model, img)
+                gray = cv2.cvtColor(img, cv2.COLOR_BGR2GRAY)
+                rects = detector(gray, 1)
+                for (i, rect) in enumerate(rects):
+                landmarks = predictor(gray, rect)
+                landmarks = face_utils.shape_to_np(landmarks)
+
                 eyebrows_list = []
                 for k in range(17,27):
                     eyebrows_list.append(int(landmarks[0][k][1]))  
 
 
-                x_1 = min(eyebrows_list)-5
+                x_1 = min(eyebrows_list)
                 x_2 = int(landmarks[0][28][1])
                 y_1 = int(landmarks[0][17][0])
                 y_2 = int(landmarks[0][26][0])
 
-                eye_img = tf.image.crop_and_resize(id_img, tf.Variable([[(x_1/255) , (y_1/255), (x_2/255), (y_2/255) ]]), tf.Variable([0]), (256,256))
+                # eye_img = tf.image.crop_and_resize(id_img, tf.Variable([[(x_1/255) , (y_1/255), (x_2/255), (y_2/255) ]]), tf.Variable([0]), (256,256))
                 
                 loss_value = 0
                 wp = tf.Variable(w ,trainable=True)
@@ -189,9 +197,9 @@ class Inference(object):
                         eye_out_image = tf.image.crop_and_resize(out_img, tf.Variable([[(x_1/255) , (y_1/255), (x_2/255), (y_2/255) ]]), tf.Variable([0]), (256,256))
                         if i%25==0 and i !=0:
                             utils.save_image(out_img, self.args.output_dir.joinpath(f'{img_name[:-4]}'+'_{0}.png'.format(i)))
-                        loss_value_1 = loss(mask_img ,mask_out_img)
+                        # loss_value_1 = loss(mask_img ,mask_out_img)
                         loss_value_3 = perceptual_loss(eye_img ,eye_out_image)
-                        loss_value = 1e-5*loss_value_3   +  1e-5*loss_value_1
+                        loss_value = 1e-5*loss_value_3  # +  1e-5*loss_value_1
                         
                     grads = tape.gradient(loss_value, [wp])
                     optimizer.apply_gradients(zip(grads, [wp]))
