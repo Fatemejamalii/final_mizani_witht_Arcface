@@ -10,7 +10,7 @@ from PIL import Image
 import numpy as np
 from matplotlib.image import imread 
 import cv2
-import face_alignment
+# import face_alignment
 from tensorflow import keras
 from imutils import face_utils
 import imutils
@@ -136,7 +136,6 @@ class Inference(object):
             mask_path = final_list[k][1]
             eye_path = final_list[k][2]
             attr_path = final_list[k][0]
-            os.path.exists
             if os.path.exists('/content/drive/MyDrive/mizani/FFHQ/result' + str(img_name[:-4])+'_final.png'):	
               pass
             else:
@@ -154,65 +153,11 @@ class Inference(object):
                 w = self.model.G.latent_spaces_mapping(z_tag)
                 pred = self.model.G.stylegan_s(w) 
                 pred = (pred + 1)  / 2 
-                
-                
-                          
-                optimizer = tf.keras.optimizers.Adam(learning_rate=0.01, beta_1 =0.9, beta_2=0.999, epsilon=1e-8 ,name='Adam')
-                loss =  tf.keras.losses.MeanAbsoluteError(tf.keras.losses.Reduction.SUM)
-                perceptual_loss =lambda y_gt, y_pred: 0.01 * self.perc_style_loss(y_gt,y_pred,self.perceptual_model)
-                
-                # mask = Image.open(mask_path)
-                # mask = mask.convert('RGB')
-                # mask = mask.resize((256,256))
-                # mask = np.asarray(mask).astype(float)/255.0
-                # mask1 = np.asarray(mask).astype(float) 
-                                  
-                img = cv2.imread(str(id_path))
-                gray = cv2.cvtColor(img, cv2.COLOR_BGR2GRAY)
-                rects = detector(gray, 1)
-                for (i, rect) in enumerate(rects):
-                landmarks = predictor(gray, rect)
-                landmarks = face_utils.shape_to_np(landmarks)
-
-                eyebrows_list = []
-                for k in range(17,27):
-                    eyebrows_list.append(int(landmarks[0][k][1]))  
-
-
-                x_1 = min(eyebrows_list)
-                x_2 = int(landmarks[0][28][1])
-                y_1 = int(landmarks[0][17][0])
-                y_2 = int(landmarks[0][26][0])
-
-                # eye_img = tf.image.crop_and_resize(id_img, tf.Variable([[(x_1/255) , (y_1/255), (x_2/255), (y_2/255) ]]), tf.Variable([0]), (256,256))
-                
-                loss_value = 0
-                wp = tf.Variable(w ,trainable=True)
-                
-                for i in range(200):
-                    with tf.GradientTape() as tape:
-                        out_img = self.model.G.stylegan_s(wp) 
-                        out_img = (out_img + 1)  / 2 
-                        mask_out_img = out_img * mask1
-                        eye_out_image = tf.image.crop_and_resize(out_img, tf.Variable([[(x_1/255) , (y_1/255), (x_2/255), (y_2/255) ]]), tf.Variable([0]), (256,256))
-                        if i%25==0 and i !=0:
-                            utils.save_image(out_img, self.args.output_dir.joinpath(f'{img_name[:-4]}'+'_{0}.png'.format(i)))
-                        # loss_value_1 = loss(mask_img ,mask_out_img)
-                        loss_value_3 = perceptual_loss(eye_img ,eye_out_image)
-                        loss_value = 1e-5*loss_value_3  # +  1e-5*loss_value_1
-                        
-                    grads = tape.gradient(loss_value, [wp])
-                    optimizer.apply_gradients(zip(grads, [wp]))
-                          
-                      
-                opt_pred = self.G.stylegan_s(wp)
-                opt_pred = (opt_pred + 1) / 2
-
                 utils.save_image(pred, self.args.output_dir.joinpath(f'{img_name[:-4]}'+'_init.png'))
                 utils.save_image(id_img, self.args.output_dir.joinpath(f'{img_name[:-4]}'+'_gt.png'))
-                utils.save_image(opt_pred, self.args.output_dir.joinpath(f'{img_name[:-4]}'+'_final.png'))
-              except:
-                print('error')
+               
+              except Exception as e :
+                print(e , k)
 
     def opt_infer_pairs(self):
         names = [f for f in self.args.id_dir.iterdir() if f.suffix[1:] in self.args.img_suffixes]
