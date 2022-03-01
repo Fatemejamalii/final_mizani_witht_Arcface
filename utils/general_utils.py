@@ -50,24 +50,24 @@ def read_mask_image(img_path, mask_path, resolution, size=256, resize=True):
     mask1 = np.asarray(mask).astype(float)
     img = im * mask * 255
     
-    fa = face_alignment.FaceAlignment(face_alignment.LandmarksType._2D, flip_input=False)
-    landmarks = fa.get_landmarks_from_image(img)
+    # fa = face_alignment.FaceAlignment(face_alignment.LandmarksType._2D, flip_input=False)
+    # landmarks = fa.get_landmarks_from_image(img)
 
-    indices = tf.constant(landmarks[0],dtype=tf.int32)
-    updates = tf.constant([1.0]*landmarks[0].shape[0])
-    shape = tf.constant([256,256])
-    scatter = tf.scatter_nd(indices, updates, shape)
-    scatter = tf.transpose(scatter)
-    scatter = np.stack((scatter,) * 3, axis = -1)	
-    scatter = np.expand_dims(scatter , axis=0)
-    scatter = np.float32(scatter)
-    land_img = scatter
+    # indices = tf.constant(landmarks[0],dtype=tf.int32)
+    # updates = tf.constant([1.0]*landmarks[0].shape[0])
+    # shape = tf.constant([256,256])
+    # scatter = tf.scatter_nd(indices, updates, shape)
+    # scatter = tf.transpose(scatter)
+    # scatter = np.stack((scatter,) * 3, axis = -1)	
+    # scatter = np.expand_dims(scatter , axis=0)
+    # scatter = np.float32(scatter)
+    # land_img = scatter
 
     
     img = im1 * mask1
     img = np.expand_dims(img , axis=0)
     img = np.float32(img)
-    return img , land_img
+    return img , img
 	
 
 
